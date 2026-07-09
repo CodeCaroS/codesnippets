@@ -20,6 +20,14 @@ export const PreviewFrame = ({
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Sandboxed iframes (sandbox="allow-scripts" without allow-same-origin) report
+      // an opaque origin represented as the string "null". Accept that origin plus
+      // the same origin as the parent window for flexibility in testing.
+      const isAllowedOrigin = event.origin === 'null' || event.origin === window.location.origin;
+      if (!isAllowedOrigin) {
+        return;
+      }
+
       if (event.data?.source !== 'codesnippets-preview' || event.data?.type !== 'console') {
         return;
       }

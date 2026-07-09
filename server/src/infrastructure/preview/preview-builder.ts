@@ -23,6 +23,10 @@ export const buildPreviewDocument = ({ html = '', css = '', javascript = '' }: B
         };
 
         const postConsoleMessage = (level, args) => {
+          // The iframe uses sandbox="allow-scripts" without allow-same-origin, which
+          // makes its origin opaque. window.parent.location.origin is inaccessible
+          // from inside the sandboxed context, so '*' is required here. The parent
+          // validates the message origin and the 'codesnippets-preview' source tag.
           window.parent.postMessage(
             {
               source: 'codesnippets-preview',

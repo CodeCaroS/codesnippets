@@ -65,7 +65,7 @@ export const applySnippetUpdate = (snippet: Snippet, command: UpdateSnippetComma
   javascript: command.javascript ?? snippet.javascript,
   tags: command.tags ? normalizeSnippetTags(command.tags) : snippet.tags,
   category: command.category ?? snippet.category,
-  favorite: command.favorite ?? snippet.favorite,
-  archived: command.archived ?? snippet.archived,
+  favorite: command.favorite !== undefined ? command.favorite : snippet.favorite,
+  archived: command.archived !== undefined ? command.archived : snippet.archived,
   updatedAt: new Date(),
 });

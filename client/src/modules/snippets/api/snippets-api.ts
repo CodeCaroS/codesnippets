@@ -23,7 +23,7 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
 
   if (!response.ok) {
     const errorPayload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-    throw new Error(errorPayload?.error?.message ?? 'API request failed');
+    throw new Error(errorPayload?.error?.message ?? `API request failed: ${response.status} ${response.statusText}`);
   }
 
   if (response.status === 204) {
