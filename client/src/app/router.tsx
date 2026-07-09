@@ -1,9 +1,10 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { SnippetEditorPage } from '../modules/snippets/ui/SnippetEditorPage';
-import { SnippetExplorerPage } from '../modules/library/ui/SnippetExplorerPage';
 import { ImportExportPanel } from '../modules/import-export/ui/ImportExportPanel';
 import { SettingsPage } from '../modules/settings/ui/SettingsPage';
+import { AgentGuidePage } from '../modules/agent-guide/ui/AgentGuidePage';
+import { WorkspacePage } from '../modules/workspace/ui/WorkspacePage';
 
 export const router = createBrowserRouter([
   {
@@ -12,7 +13,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <SnippetExplorerPage />,
+        element: <WorkspacePage />,
       },
       {
         path: 'snippets/new',
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: <SettingsPage />,
+      },
+      {
+        path: 'agent-guide',
+        element: <AgentGuidePage />,
       },
     ],
   },

@@ -1,6 +1,6 @@
 import { BuildPreviewCommand } from '../../application/use-cases/build-preview-document.js';
 
-const escapeScriptContent = (value: string): string => value.replace(/<\/script/gi, '<\\/script');
+const scriptLiteral = (value: string): string => JSON.stringify(value).replace(/<\/script/gi, '<\\/script');
 
 export const buildPreviewDocument = ({ html = '', css = '', javascript = '' }: BuildPreviewCommand): string => `<!DOCTYPE html>
 <html lang="en">
@@ -50,11 +50,21 @@ export const buildPreviewDocument = ({ html = '', css = '', javascript = '' }: B
           postConsoleMessage('error', [event.message]);
         });
 
-        try {
-          ${escapeScriptContent(javascript)}
-        } catch (error) {
-          console.error(error instanceof Error ? error.message : String(error));
-        }
+    const userScript = ${scriptLiteral(javascript)};
+
+    const toExecutableScript = (source) => {
+      if (window.Babel?.transform) {
+        return window.Babel.transform(source, { presets: ['react'] }).code;
+      }
+      return source;
+    };
+
+    try {
+      const executableScript = toExecutableScript(userScript);
+      new Function(executableScript)();
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+    }
       })();
     </script>
   </body>

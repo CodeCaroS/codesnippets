@@ -223,6 +223,8 @@ export const SnippetEditorPage = () => {
             css={editorState.css}
             html={editorState.html}
             javascript={editorState.javascript}
+            onReset={handleRun}
+            onRun={handleRun}
             runVersion={runVersion}
             onConsoleMessage={(entry) => setConsoleEntries((current) => [...current, entry])}
           />
