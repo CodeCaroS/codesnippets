@@ -29,7 +29,7 @@ The target app already has a local-only workflow, a sandboxed preview iframe, an
 
 ## References
 
-- [server/src/host-policy.ts](/Z:/Programming Projects/codesnippet/server/src/host-policy.ts)
-- [client/src/modules/runner/ui/PreviewFrame.tsx](/Z:/Programming Projects/codesnippet/client/src/modules/runner/ui/PreviewFrame.tsx)
-- [client/src/modules/snippets/api/snippets-api.ts](/Z:/Programming Projects/codesnippet/client/src/modules/snippets/api/snippets-api.ts)
-- [shared/src/index.ts](/Z:/Programming Projects/codesnippet/shared/src/index.ts)
+- [server/src/host-policy.ts](../../server/src/host-policy.ts)
+- [client/src/modules/runner/ui/PreviewFrame.tsx](../../client/src/modules/runner/ui/PreviewFrame.tsx)
+- [client/src/modules/snippets/api/snippets-api.ts](../../client/src/modules/snippets/api/snippets-api.ts)
+- [shared/src/index.ts](../../shared/src/index.ts)
