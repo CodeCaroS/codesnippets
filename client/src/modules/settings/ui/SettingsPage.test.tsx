@@ -32,7 +32,7 @@ describe('SettingsPage', () => {
     vi.mocked(api.getTags).mockResolvedValue({ data: [], total: 0 });
   });
 
-  it('combines reference-style preferences, database status, and backup tools', async () => {
+  it('renders the minimal settings layout with preferences, status, and backup panels', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
     render(
@@ -41,14 +41,15 @@ describe('SettingsPage', () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByText('System Preferences & Tools')).toBeInTheDocument();
-    expect(screen.getByLabelText('Editor Font Size (px)')).toBeInTheDocument();
-    expect(screen.getByLabelText('Auto-save interval')).toBeInTheDocument();
-    expect(await screen.findByText('Local Database Status')).toBeInTheDocument();
-    expect(screen.getByText('Backup Library Engine')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Preferences & Backups' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Editor preferences' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Database status' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Backup tools' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save preferences' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download database JSON' })).toBeInTheDocument();
   });
 
-  it('uses ordered settings sections instead of an unstructured tools layout', async () => {
+  it('keeps the status snapshot and backup import controls visible', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
     render(
@@ -57,9 +58,12 @@ describe('SettingsPage', () => {
       </QueryClientProvider>,
     );
 
-    expect(document.querySelector('.settings-tools-grid')).toHaveClass('settings-tools-grid--ordered');
-    expect(await screen.findByRole('region', { name: 'Editor preferences' })).toHaveClass('settings-section--preferences');
-    expect(screen.getByRole('region', { name: 'Database status' })).toHaveClass('settings-section--status');
-    expect(screen.getByRole('region', { name: 'Backup tools' })).toHaveClass('settings-section--backup');
+    const snapshot = screen.getByLabelText('Workspace snapshot');
+    expect(snapshot).toHaveTextContent('Backend');
+    expect(snapshot).toHaveTextContent('Snippets');
+    expect(snapshot).toHaveTextContent('Tags');
+    expect(screen.getByLabelText('Editor Font Size (px)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Auto-save interval')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('{ "snippets": [ ... ], "exportedAt": "...", "version": "..." }')).toBeInTheDocument();
   });
 });

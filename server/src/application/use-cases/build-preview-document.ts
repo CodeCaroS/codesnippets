@@ -1,15 +1,13 @@
-import { buildPreviewDocument } from '../../infrastructure/preview/preview-builder.js';
+import type { PreviewDocumentBuilder, PreviewDocumentInput } from '../ports/preview-document-builder.js';
 
-export type BuildPreviewCommand = {
-  html?: string;
-  css?: string;
-  javascript?: string;
-};
+export type BuildPreviewCommand = PreviewDocumentInput;
 
 export class BuildPreviewDocumentUseCase {
+  constructor(private readonly previewDocumentBuilder: PreviewDocumentBuilder) {}
+
   execute(command: BuildPreviewCommand): { document: string } {
     return {
-      document: buildPreviewDocument(command),
+      document: this.previewDocumentBuilder.build(command),
     };
   }
 }

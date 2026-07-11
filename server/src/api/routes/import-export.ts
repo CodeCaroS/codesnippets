@@ -9,6 +9,7 @@ const snippetSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   description: z.string(),
+  sourceUrl: z.string().default(''),
   html: z.string(),
   css: z.string(),
   javascript: z.string(),
@@ -24,7 +25,7 @@ const schema = z.object({
   snippets: z.array(snippetSchema),
   exportedAt: z.string().datetime(),
   version: z.string().min(1),
-}) satisfies z.ZodType<ImportExportData>;
+});
 
 export const createImportExportRouter = (
   importUseCase: ImportSnippetsUseCase,

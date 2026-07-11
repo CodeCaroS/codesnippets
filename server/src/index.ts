@@ -1,7 +1,8 @@
 import { createApp } from './api/server.js';
+import { resolveLoopbackHost } from './host-policy.js';
 
 const port = Number(process.env.PORT ?? 3001);
-const host = process.env.HOST ?? '127.0.0.1';
+const host = resolveLoopbackHost();
 const app = createApp({
   databasePath: process.env.DATABASE_PATH,
   version: process.env.npm_package_version ?? '0.1.0',

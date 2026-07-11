@@ -11,6 +11,7 @@ export class ImportSnippetsUseCase {
         id: snippet.id,
         title: snippet.title,
         description: snippet.description,
+        sourceUrl: snippet.sourceUrl?.trim() ?? '',
         html: snippet.html,
         css: snippet.css,
         javascript: snippet.javascript,

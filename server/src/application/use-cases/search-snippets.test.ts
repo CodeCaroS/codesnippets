@@ -7,6 +7,7 @@ const createSnippet = (overrides: Partial<Snippet>): Snippet => ({
   id: crypto.randomUUID(),
   title: 'Snippet',
   description: '',
+  sourceUrl: '',
   html: '',
   css: '',
   javascript: '',
@@ -30,5 +31,21 @@ describe('SearchSnippetsUseCase', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0]?.title).toBe('React Card');
+  });
+
+  it('searches snippets by source url text', async () => {
+    const repository = new InMemorySnippetRepository();
+    await repository.save(
+      createSnippet({
+        title: 'Inspiration',
+        sourceUrl: 'https://inspiration.example/card',
+      }),
+    );
+    const useCase = new SearchSnippetsUseCase(repository);
+
+    const results = await useCase.execute({ text: 'inspiration.example' });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.sourceUrl).toBe('https://inspiration.example/card');
   });
 });

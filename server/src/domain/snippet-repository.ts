@@ -1,4 +1,4 @@
-import { Snippet, SnippetId, CreateSnippetCommand, UpdateSnippetCommand, SnippetSearchQuery } from './snippet.js';
+import { Snippet, SnippetId, UpdateSnippetCommand, SnippetSearchQuery } from './snippet.js';
 
 export interface SnippetRepository {
   findById(id: SnippetId): Promise<Snippet | null>;
@@ -6,7 +6,4 @@ export interface SnippetRepository {
   save(snippet: Snippet): Promise<void>;
   update(id: SnippetId, command: UpdateSnippetCommand): Promise<Snippet | null>;
   delete(id: SnippetId): Promise<boolean>;
-  search(query: SnippetSearchQuery): Promise<Snippet[]>;
 }
-
-export type SnippetDraft = CreateSnippetCommand;

@@ -1,8 +1,10 @@
-import { BuildPreviewCommand } from '../../application/use-cases/build-preview-document.js';
+import type { PreviewDocumentBuilder, PreviewDocumentInput } from '../../application/ports/preview-document-builder.js';
 
 const scriptLiteral = (value: string): string => JSON.stringify(value).replace(/<\/script/gi, '<\\/script');
 
-export const buildPreviewDocument = ({ html = '', css = '', javascript = '' }: BuildPreviewCommand): string => `<!DOCTYPE html>
+export class SandboxedPreviewDocumentBuilder implements PreviewDocumentBuilder {
+  build({ executionId, html, css, javascript }: PreviewDocumentInput): string {
+    return `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -31,6 +33,7 @@ export const buildPreviewDocument = ({ html = '', css = '', javascript = '' }: B
             {
               source: 'codesnippets-preview',
               type: 'console',
+              executionId: ${scriptLiteral(executionId)},
               level,
               args: args.map(serialize),
             },
@@ -69,3 +72,5 @@ export const buildPreviewDocument = ({ html = '', css = '', javascript = '' }: B
     </script>
   </body>
 </html>`;
+  }
+}

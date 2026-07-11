@@ -19,6 +19,7 @@ const paramsSchema = z.object({
 const createSnippetSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
+  sourceUrl: z.string().trim().url().or(z.literal('')).optional(),
   html: z.string().optional(),
   css: z.string().optional(),
   javascript: z.string().optional(),

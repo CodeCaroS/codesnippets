@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+
 export const EmptyLibraryState = () => (
   <div className="empty-state">
     <h2>No snippets yet</h2>

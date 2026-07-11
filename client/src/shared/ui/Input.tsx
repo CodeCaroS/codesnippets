@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import clsx from 'clsx';
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {

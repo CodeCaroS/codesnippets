@@ -34,6 +34,7 @@ const snippet: Snippet = {
   archived: false,
   createdAt: '2026-07-09T10:00:00.000Z',
   updatedAt: '2026-07-09T11:00:00.000Z',
+  sourceUrl: 'https://example.com/inspiration',
 };
 
 const secondSnippet: Snippet = {
@@ -76,6 +77,7 @@ describe('WorkspacePage', () => {
     vi.mocked(api.getTags).mockResolvedValue({ data: [{ id: 'ui', name: 'ui' }], total: 1 });
     vi.mocked(api.buildPreview).mockResolvedValue({ document: '<html><body>preview</body></html>' });
     vi.mocked(api.createSnippet).mockResolvedValue(snippet);
+    vi.mocked(api.updateSnippet).mockResolvedValue(snippet);
   });
 
   it('composes the reference workspace surface from modular data APIs', async () => {
@@ -115,6 +117,8 @@ describe('WorkspacePage', () => {
     renderWorkspace();
 
     await waitFor(() => expect(screen.getByText('Reference Card')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'metadata.json' }));
+    await waitFor(() => expect(screen.getByDisplayValue('Reference Card')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Templates' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Save Current as Template' }));
 
@@ -157,9 +161,12 @@ describe('WorkspacePage', () => {
     await waitFor(() => expect(screen.getByText('Reference Card')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Second Card'));
 
-    await waitFor(() =>
-      expect(api.buildPreview).toHaveBeenCalledWith(secondSnippet.html, secondSnippet.css, secondSnippet.javascript),
-    );
+    await waitFor(() => expect(api.buildPreview).toHaveBeenCalled());
+    expect(vi.mocked(api.buildPreview).mock.calls.at(-1)?.[0]).toMatchObject({
+      html: secondSnippet.html,
+      css: secondSnippet.css,
+      javascript: secondSnippet.javascript,
+    });
   });
 
   it('marks code tabs as full-height editor surfaces and metadata as compact form surface', async () => {
@@ -172,5 +179,16 @@ describe('WorkspacePage', () => {
 
     expect(document.querySelector('.workspace-editor__body')).toHaveClass('workspace-editor__body--metadata');
     expect(document.querySelector('.metadata-editor')).toHaveClass('metadata-editor--compact');
+    await waitFor(() => expect(screen.getByLabelText('Source / Inspiration URL')).toHaveValue('https://example.com/inspiration'));
+
+    fireEvent.change(screen.getByLabelText('Source / Inspiration URL'), {
+      target: { value: 'https://example.com/source' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(api.updateSnippet).toHaveBeenCalled());
+    expect(vi.mocked(api.updateSnippet).mock.calls.at(-1)?.[1]).toMatchObject({
+      sourceUrl: 'https://example.com/source',
+    });
   });
 });

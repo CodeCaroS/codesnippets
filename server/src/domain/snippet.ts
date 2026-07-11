@@ -4,6 +4,7 @@ export interface Snippet {
   id: SnippetId;
   title: string;
   description: string;
+  sourceUrl: string;
   html: string;
   css: string;
   javascript: string;
@@ -18,6 +19,7 @@ export interface Snippet {
 export type CreateSnippetCommand = {
   title: string;
   description?: string;
+  sourceUrl?: string;
   html?: string;
   css?: string;
   javascript?: string;
@@ -28,6 +30,7 @@ export type CreateSnippetCommand = {
 export type UpdateSnippetCommand = {
   title?: string;
   description?: string;
+  sourceUrl?: string;
   html?: string;
   css?: string;
   javascript?: string;
@@ -60,6 +63,7 @@ export const applySnippetUpdate = (snippet: Snippet, command: UpdateSnippetComma
   ...snippet,
   title: command.title ?? snippet.title,
   description: command.description ?? snippet.description,
+  sourceUrl: command.sourceUrl?.trim() ?? snippet.sourceUrl,
   html: command.html ?? snippet.html,
   css: command.css ?? snippet.css,
   javascript: command.javascript ?? snippet.javascript,

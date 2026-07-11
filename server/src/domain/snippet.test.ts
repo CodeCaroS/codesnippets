@@ -5,6 +5,7 @@ const baseSnippet: Snippet = {
   id: 'snippet-1',
   title: 'Hello',
   description: '',
+  sourceUrl: '',
   html: '<h1>Hello</h1>',
   css: '',
   javascript: '',
@@ -42,5 +43,12 @@ describe('snippet domain helpers', () => {
     expect(archived.archived).toBe(true);
     const unarchived = applySnippetUpdate(archived, { archived: false });
     expect(unarchived.archived).toBe(false);
+  });
+
+  it('updates source urls via applySnippetUpdate', () => {
+    const updated = applySnippetUpdate(baseSnippet, { sourceUrl: 'https://example.com/inspiration' });
+
+    expect(updated.sourceUrl).toBe('https://example.com/inspiration');
+    expect(baseSnippet.sourceUrl).toBe('');
   });
 });

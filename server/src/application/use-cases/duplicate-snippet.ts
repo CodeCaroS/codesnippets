@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { NotFoundError } from '../errors.js';
 import { Snippet, SnippetId } from '../../domain/snippet.js';
 import { SnippetRepository } from '../../domain/snippet-repository.js';
@@ -22,7 +22,7 @@ export class DuplicateSnippetUseCase {
     const now = new Date();
     const duplicate: Snippet = {
       ...existing,
-      id: uuidv4(),
+      id: randomUUID(),
       title: buildCopyTitle(existing.title),
       favorite: false,
       archived: false,

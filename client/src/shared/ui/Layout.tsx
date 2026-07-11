@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Bot, DatabaseBackup, FileCode, Layers, Settings } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 

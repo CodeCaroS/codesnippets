@@ -26,6 +26,7 @@ import { createTagsRouter } from './routes/tags.js';
 import { checkDatabaseConnection, createDatabase } from '../infrastructure/database/database.js';
 import { SQLiteSnippetRepository } from '../infrastructure/repositories/sqlite-snippet-repository.js';
 import { SQLiteTagRepository } from '../infrastructure/repositories/sqlite-tag-repository.js';
+import { SandboxedPreviewDocumentBuilder } from '../infrastructure/preview/preview-builder.js';
 
 export const createApp = ({
   databasePath,
@@ -49,7 +50,7 @@ export const createApp = ({
   const searchSnippets = new SearchSnippetsUseCase(snippetRepository);
   const importSnippets = new ImportSnippetsUseCase(snippetRepository);
   const exportSnippets = new ExportSnippetsUseCase(snippetRepository);
-  const buildPreview = new BuildPreviewDocumentUseCase();
+  const buildPreview = new BuildPreviewDocumentUseCase(new SandboxedPreviewDocumentBuilder());
 
   const app = express();
   app.disable('x-powered-by');

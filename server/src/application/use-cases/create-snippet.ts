@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { CreateSnippetCommand, Snippet, normalizeSnippetTags } from '../../domain/snippet.js';
 import { SnippetRepository } from '../../domain/snippet-repository.js';
 
@@ -8,9 +8,10 @@ export class CreateSnippetUseCase {
   async execute(command: CreateSnippetCommand): Promise<Snippet> {
     const now = new Date();
     const snippet: Snippet = {
-      id: uuidv4(),
+      id: randomUUID(),
       title: command.title.trim(),
       description: command.description ?? '',
+      sourceUrl: command.sourceUrl?.trim() ?? '',
       html: command.html ?? '',
       css: command.css ?? '',
       javascript: command.javascript ?? '',

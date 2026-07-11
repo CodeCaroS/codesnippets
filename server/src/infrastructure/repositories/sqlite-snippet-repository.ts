@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { SnippetRepository } from '../../domain/snippet-repository.js';
 import { Snippet, SnippetId, SnippetSearchQuery, UpdateSnippetCommand, applySnippetUpdate, normalizeSnippetTags } from '../../domain/snippet.js';
 import type { SQLiteDatabase } from '../database/database.js';
@@ -7,6 +7,7 @@ interface SnippetRow {
   id: string;
   title: string;
   description: string;
+  source_url: string;
   html: string;
   css: string;
   javascript: string;
@@ -38,11 +39,12 @@ export class SQLiteSnippetRepository implements SnippetRepository {
     const saveSnippet = this.db.transaction((entity: Snippet) => {
       this.db.prepare(
         `INSERT INTO snippets (
-          id, title, description, html, css, javascript, category, favorite, archived, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, title, description, source_url, html, css, javascript, category, favorite, archived, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title,
           description = excluded.description,
+          source_url = excluded.source_url,
           html = excluded.html,
           css = excluded.css,
           javascript = excluded.javascript,
@@ -55,6 +57,7 @@ export class SQLiteSnippetRepository implements SnippetRepository {
         entity.id,
         entity.title,
         entity.description,
+        entity.sourceUrl.trim(),
         entity.html,
         entity.css,
         entity.javascript,
@@ -94,10 +97,6 @@ export class SQLiteSnippetRepository implements SnippetRepository {
     return deleted(id);
   }
 
-  async search(query: SnippetSearchQuery): Promise<Snippet[]> {
-    return this.querySnippets(query);
-  }
-
   async listCategories(): Promise<Array<{ id: string; name: string }>> {
     const rows = this.db
       .prepare(`SELECT DISTINCT category AS name FROM snippets WHERE TRIM(category) <> '' ORDER BY category ASC`)
@@ -127,8 +126,8 @@ export class SQLiteSnippetRepository implements SnippetRepository {
 
     if (query.text?.trim()) {
       const text = `%${query.text.trim()}%`;
-      conditions.push('(s.title LIKE ? OR s.description LIKE ? OR s.html LIKE ? OR s.css LIKE ? OR s.javascript LIKE ?)');
-      params.push(text, text, text, text, text);
+      conditions.push('(s.title LIKE ? OR s.description LIKE ? OR s.source_url LIKE ? OR s.html LIKE ? OR s.css LIKE ? OR s.javascript LIKE ?)');
+      params.push(text, text, text, text, text, text);
     }
 
     if (query.tags?.length) {
@@ -171,6 +170,7 @@ export class SQLiteSnippetRepository implements SnippetRepository {
       id: row.id,
       title: row.title,
       description: row.description,
+      sourceUrl: row.source_url,
       html: row.html,
       css: row.css,
       javascript: row.javascript,
@@ -188,7 +188,7 @@ export class SQLiteSnippetRepository implements SnippetRepository {
     this.db.prepare('DELETE FROM snippet_tags WHERE snippet_id = ?').run(snippetId);
 
     for (const name of normalizedTags) {
-      this.db.prepare('INSERT INTO tags (id, name) VALUES (?, ?) ON CONFLICT(name) DO NOTHING').run(uuidv4(), name);
+      this.db.prepare('INSERT INTO tags (id, name) VALUES (?, ?) ON CONFLICT(name) DO NOTHING').run(randomUUID(), name);
       this.db.prepare(
         `INSERT INTO snippet_tags (snippet_id, tag_id)
          SELECT ?, id FROM tags WHERE name = ?

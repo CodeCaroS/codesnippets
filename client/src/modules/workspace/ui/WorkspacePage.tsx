@@ -1,27 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
-import CodeMirror from '@uiw/react-codemirror';
-import { css as cssLanguage } from '@codemirror/lang-css';
-import { html as htmlLanguage } from '@codemirror/lang-html';
-import { javascript as javascriptLanguage } from '@codemirror/lang-javascript';
-import { oneDark } from '@codemirror/theme-one-dark';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateSnippetRequest, Snippet } from '@codesnippets/shared';
+import { loadWorkspacePreferences, saveWorkspacePreferences, type WorkspacePreferences } from '../../settings';
 import {
-  archiveSnippet,
-  createSnippet,
-  deleteSnippet,
-  duplicateSnippet,
-  favoriteSnippet,
-  getCategories,
-  getSnippet,
-  getSnippets,
-  getTags,
-  updateSnippet,
 } from '../../snippets/api/snippets-api';
 import { ConsolePanel, type ConsoleEntry } from '../../runner/ui/ConsolePanel';
 import { PreviewFrame } from '../../runner/ui/PreviewFrame';
+import { emptyEditorState, toEditorState, type EditorState, type SnippetTemplate } from '../domain/workspace-editor';
+import { loadCustomTemplates, saveCustomTemplates } from '../infrastructure/browser-template-store';
+import { useWorkspaceLibraryData } from '../presentation/use-workspace-library-data';
+import { useWorkspaceSnippetMutations } from '../presentation/use-workspace-snippet-mutations';
 import {
   Archive,
   Copy,
@@ -30,6 +19,8 @@ import {
   FolderOpen,
   Play,
   Plus,
+  PanelLeftClose,
+  PanelLeftOpen,
   RotateCcw,
   Search,
   Sparkles,
@@ -40,35 +31,7 @@ import {
 type EditorTab = 'html' | 'css' | 'javascript' | 'metadata';
 type ViewFilter = 'all' | 'favorites' | 'archived';
 
-type EditorState = Pick<Snippet, 'title' | 'description' | 'html' | 'css' | 'javascript' | 'tags' | 'category' | 'favorite'>;
-
-type WorkspaceSettings = {
-  autoRun: boolean;
-  autoSaveInterval: number;
-  editorFontSize: number;
-  wordWrap: boolean;
-};
-
-const settingsKey = 'codesnippets:workspace-settings';
-const customTemplatesKey = 'codesnippets:custom-templates';
-
-const defaultSettings: WorkspaceSettings = {
-  autoRun: true,
-  autoSaveInterval: 0,
-  editorFontSize: 14,
-  wordWrap: true,
-};
-
-const emptyEditorState: EditorState = {
-  title: 'Untitled snippet',
-  description: '',
-  html: '<div class="app">Hello CodeSnippets</div>',
-  css: '.app { font-family: sans-serif; padding: 1rem; }',
-  javascript: 'console.log("Ready")',
-  tags: ['demo'],
-  category: 'Examples',
-  favorite: false,
-};
+const emptySnippets: Snippet[] = [];
 
 const starterSnippet: CreateSnippetRequest = {
   title: 'New Custom Snippet',
@@ -92,24 +55,6 @@ const starterSnippet: CreateSnippetRequest = {
     '// Write your runtime JS interactions here\n' +
     'const btn = document.getElementById("clickBtn");\n' +
     'if (btn) btn.addEventListener("click", () => console.log("Custom code running perfectly!"));',
-};
-
-type SnippetTemplate = CreateSnippetRequest & {
-  id: string;
-  name: string;
-};
-
-const readCustomTemplates = (): SnippetTemplate[] => {
-  const saved = window.localStorage.getItem(customTemplatesKey);
-  if (!saved) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(saved) as SnippetTemplate[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 };
 
 const snippetTemplates: SnippetTemplate[] = [
@@ -213,6 +158,8 @@ const editorTabs: Array<{ key: EditorTab; label: string }> = [
   { key: 'metadata', label: 'metadata.json' },
 ];
 
+const WorkspaceCodeEditor = lazy(() => import('../presentation/workspace-code-editor'));
+
 export const getTemplateMenuPosition = (
   rect: Pick<DOMRect, 'bottom' | 'left' | 'right'>,
   viewportWidth: number,
@@ -225,24 +172,32 @@ export const getTemplateMenuPosition = (
   };
 };
 
-const toEditorState = (snippet: Snippet): EditorState => ({
-  title: snippet.title,
-  description: snippet.description,
-  html: snippet.html,
-  css: snippet.css,
-  javascript: snippet.javascript,
-  tags: snippet.tags,
-  category: snippet.category,
-  favorite: snippet.favorite,
-});
-
 export const WorkspacePage = () => {
-  const queryClient = useQueryClient();
+  const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false);
+  const [editorWidth, setEditorWidth] = useState(50);
+  const isResizingRef = useRef(false);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!isResizingRef.current) return;
+      const workspace = document.querySelector<HTMLElement>('.workspace-main');
+      if (!workspace) return;
+      const ratio = ((event.clientX - workspace.getBoundingClientRect().left) / workspace.clientWidth) * 100;
+      setEditorWidth(Math.min(70, Math.max(30, ratio)));
+    };
+    const stopResizing = () => { isResizingRef.current = false; };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResizing);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResizing);
+    };
+  }, []);
   const [selectedId, setSelectedId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedTag, setSelectedTag] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<EditorTab>('html');
   const [editorState, setEditorState] = useState<EditorState>(emptyEditorState);
   const [savedSnapshot, setSavedSnapshot] = useState(JSON.stringify(emptyEditorState));
@@ -255,43 +210,25 @@ export const WorkspacePage = () => {
   const [templateMenuPosition, setTemplateMenuPosition] = useState({ left: 0, top: 0 });
   const [syncedSnippetId, setSyncedSnippetId] = useState('');
   const templateButtonRef = useRef<HTMLButtonElement>(null);
-  const [customTemplates, setCustomTemplates] = useState<SnippetTemplate[]>(readCustomTemplates);
-  const [settings, setSettings] = useState<WorkspaceSettings>(() => {
-    const saved = window.localStorage.getItem(settingsKey);
-    return saved ? { ...defaultSettings, ...JSON.parse(saved) as WorkspaceSettings } : defaultSettings;
-  });
+  const [customTemplates, setCustomTemplates] = useState<SnippetTemplate[]>(loadCustomTemplates);
+  const [settings, setSettings] = useState<WorkspacePreferences>(loadWorkspacePreferences);
 
   useEffect(() => {
-    window.localStorage.setItem(settingsKey, JSON.stringify(settings));
+    saveWorkspacePreferences(settings);
   }, [settings]);
 
   useEffect(() => {
-    window.localStorage.setItem(customTemplatesKey, JSON.stringify(customTemplates));
+    saveCustomTemplates(customTemplates);
   }, [customTemplates]);
 
-  const snippetsQuery = useQuery({
-    queryKey: ['snippets', viewFilter, selectedCategory, selectedTag],
-    queryFn: () =>
-      getSnippets({
-        archived: viewFilter === 'archived' ? true : false,
-        favorite: viewFilter === 'favorites' ? true : undefined,
-        category: selectedCategory || undefined,
-        tag: selectedTag || undefined,
-        sort: 'updatedAt',
-        direction: 'desc',
-      }),
+  const { snippetsQuery, categoriesQuery, tagsQuery, snippetQuery } = useWorkspaceLibraryData({
+    selectedCategory,
+    selectedId,
+    selectedTag,
+    viewFilter,
   });
 
-  const snippets = snippetsQuery.data?.data ?? [];
-
-  const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: getCategories });
-  const tagsQuery = useQuery({ queryKey: ['tags'], queryFn: getTags });
-
-  const snippetQuery = useQuery({
-    queryKey: ['snippet', selectedId],
-    queryFn: () => getSnippet(selectedId),
-    enabled: Boolean(selectedId),
-  });
+  const snippets = snippetsQuery.data?.data ?? emptySnippets;
 
   useEffect(() => {
     if (!selectedId && snippets.length > 0) {
@@ -324,82 +261,22 @@ export const WorkspacePage = () => {
     ]);
   }, []);
 
-  const invalidateSnippetData = async (snippetId?: string) => {
-    await queryClient.invalidateQueries({ queryKey: ['snippets'] });
-    await queryClient.invalidateQueries({ queryKey: ['categories'] });
-    await queryClient.invalidateQueries({ queryKey: ['tags'] });
-    if (snippetId) {
-      await queryClient.invalidateQueries({ queryKey: ['snippet', snippetId] });
-    }
-  };
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (selectedId) {
-        return updateSnippet(selectedId, editorState);
-      }
-      return createSnippet(editorState);
-    },
-    onSuccess: async (snippet) => {
-      const nextState = toEditorState(snippet);
-      setEditorState(nextState);
-      setSavedSnapshot(JSON.stringify(nextState));
-      setSelectedId(snippet.id);
-      addConsoleEntry('info', 'Code playground saved successfully.');
-      await invalidateSnippetData(snippet.id);
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: createSnippet,
-    onSuccess: async (snippet) => {
-      setSelectedId(snippet.id);
-      setIsCreateOpen(false);
-      addConsoleEntry('info', `Successfully initialized snippet "${snippet.title}".`);
-      await invalidateSnippetData(snippet.id);
-    },
-  });
-
-  const favoriteMutation = useMutation({
-    mutationFn: favoriteSnippet,
-    onSuccess: async (snippet) => invalidateSnippetData(snippet.id),
-  });
-
-  const archiveMutation = useMutation({
-    mutationFn: archiveSnippet,
-    onSuccess: async (snippet) => invalidateSnippetData(snippet.id),
-  });
-
-  const duplicateMutation = useMutation({
-    mutationFn: duplicateSnippet,
-    onSuccess: async (snippet) => {
-      setSelectedId(snippet.id);
-      addConsoleEntry('info', `Duplicated code as "${snippet.title}".`);
-      await invalidateSnippetData(snippet.id);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteSnippet,
-    onSuccess: async () => {
-      setSelectedId('');
-      addConsoleEntry('info', 'Snippet permanently deleted.');
-      await invalidateSnippetData();
-    },
+  const { saveMutation, createMutation, favoriteMutation, archiveMutation, duplicateMutation, deleteMutation } = useWorkspaceSnippetMutations({
+    selectedId, editorState, onSelectedIdChange: setSelectedId, onEditorStateChange: setEditorState,
+    onSavedSnapshotChange: setSavedSnapshot, onConsoleEntry: addConsoleEntry, onCreateSuccess: () => setIsCreateOpen(false),
   });
 
   const filteredSnippets = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return snippets;
-    }
-    const query = searchTerm.toLowerCase();
-    return snippets.filter((snippet) =>
-      [snippet.title, snippet.description, snippet.html, snippet.css, snippet.javascript, snippet.tags.join(' ')]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [searchTerm, snippets]);
+    const query = searchTerm.trim().toLowerCase();
+    return snippets.filter((snippet) => {
+      const matchesCategory = selectedCategory.length === 0 || selectedCategory.includes(snippet.category);
+      const matchesTag = selectedTag.length === 0 || selectedTag.some((tag) => snippet.tags.includes(tag));
+      const matchesSearch = !query || [
+        snippet.title, snippet.description, snippet.sourceUrl, snippet.html, snippet.css, snippet.javascript, snippet.tags.join(' '),
+      ].join(' ').toLowerCase().includes(query);
+      return matchesCategory && matchesTag && matchesSearch;
+    });
+  }, [searchTerm, selectedCategory, selectedTag, snippets]);
 
   const categories = categoriesQuery.data?.data ?? [];
   const tags = tagsQuery.data?.data ?? [];
@@ -454,13 +331,21 @@ export const WorkspacePage = () => {
 
   return (
     <div className="workspace-page">
-      <aside className="workspace-library">
+      <aside className={isLibraryCollapsed ? 'workspace-library workspace-library--collapsed' : 'workspace-library'}>
         <div className="workspace-library__header">
           <div className="workspace-section-title">
             <FolderOpen size={16} />
             <span>Library Explorer</span>
+            <button
+              aria-label={isLibraryCollapsed ? 'Expand Library Explorer' : 'Collapse Library Explorer'}
+              className="workspace-library__toggle"
+              onClick={() => setIsLibraryCollapsed((value) => !value)}
+              type="button"
+            >
+              {isLibraryCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+            </button>
           </div>
-          <div className="workspace-library__header-actions">
+          <div className="workspace-library__header-actions workspace-library__header-actions--pill">
             <div className="template-menu">
               <button
                 aria-expanded={isTemplateMenuOpen}
@@ -609,7 +494,7 @@ export const WorkspacePage = () => {
         </div>
       </aside>
 
-      <section className="workspace-main">
+      <section className="workspace-main" style={{ gridTemplateColumns: `minmax(0, ${editorWidth}fr) 8px minmax(340px, ${100 - editorWidth}fr)` }}>
         <div className="workspace-editor">
           <div className="workspace-editor__tabs">
             <div className="workspace-editor__tab-list">
@@ -644,40 +529,48 @@ export const WorkspacePage = () => {
             }
           >
             {activeTab === 'html' ? (
-              <CodeMirror
-                extensions={[htmlLanguage()]}
-                height="100%"
-                theme={oneDark}
-                value={editorState.html}
-                onChange={(value) => setEditorState((current) => ({ ...current, html: value }))}
-                style={{ fontSize: `${settings.editorFontSize}px` }}
-              />
+              <Suspense fallback={<div className="workspace-editor__loading">Loading editor...</div>}>
+                <WorkspaceCodeEditor
+                  fontSize={settings.editorFontSize}
+                  language="html"
+                  onChange={(value) => setEditorState((current) => ({ ...current, html: value }))}
+                  value={editorState.html}
+                />
+              </Suspense>
             ) : null}
             {activeTab === 'css' ? (
-              <CodeMirror
-                extensions={[cssLanguage()]}
-                height="100%"
-                theme={oneDark}
-                value={editorState.css}
-                onChange={(value) => setEditorState((current) => ({ ...current, css: value }))}
-                style={{ fontSize: `${settings.editorFontSize}px` }}
-              />
+              <Suspense fallback={<div className="workspace-editor__loading">Loading editor...</div>}>
+                <WorkspaceCodeEditor
+                  fontSize={settings.editorFontSize}
+                  language="css"
+                  onChange={(value) => setEditorState((current) => ({ ...current, css: value }))}
+                  value={editorState.css}
+                />
+              </Suspense>
             ) : null}
             {activeTab === 'javascript' ? (
-              <CodeMirror
-                extensions={[javascriptLanguage()]}
-                height="100%"
-                theme={oneDark}
-                value={editorState.javascript}
-                onChange={(value) => setEditorState((current) => ({ ...current, javascript: value }))}
-                style={{ fontSize: `${settings.editorFontSize}px` }}
-              />
+              <Suspense fallback={<div className="workspace-editor__loading">Loading editor...</div>}>
+                <WorkspaceCodeEditor
+                  fontSize={settings.editorFontSize}
+                  language="javascript"
+                  onChange={(value) => setEditorState((current) => ({ ...current, javascript: value }))}
+                  value={editorState.javascript}
+                />
+              </Suspense>
             ) : null}
             {activeTab === 'metadata' ? (
               <MetadataEditor editorState={editorState} setEditorState={setEditorState} />
             ) : null}
           </div>
         </div>
+
+        <div
+          aria-label="Resize editor and preview"
+          className="workspace-resizer"
+          onPointerDown={() => { isResizingRef.current = true; }}
+          role="separator"
+          tabIndex={0}
+        />
 
         <div className="workspace-preview-stack">
           {selectedId && syncedSnippetId !== selectedId ? (
@@ -776,26 +669,37 @@ const FilterChips = ({
   icon?: ReactNode;
   items: string[];
   label: string;
-  onSelect: (value: string) => void;
+  onSelect: (value: string[]) => void;
   prefix?: string;
-  selected: string;
+  selected: string[];
 }) => (
   <div className="workspace-filter">
     <div className="workspace-filter__label">
       {icon}
       <span>{label}</span>
     </div>
-    <div className="workspace-filter__chips">
-      <button className={!selected ? 'chip chip--active' : 'chip'} onClick={() => onSelect('')} type="button">
-        All
+    <input
+      aria-label={label}
+      className="workspace-filter__select"
+      list={`filter-options-${label.replace(/\s+/g, '-').toLowerCase()}`}
+      onChange={(event) => {
+        const values = event.target.value
+          .split(',')
+          .map((value) => value.trim().replace(/^#/, ''))
+          .filter(Boolean);
+        onSelect(values);
+      }}
+      placeholder={`${prefix}Type to filter...`}
+      value={selected.map((value) => `${prefix}${value}`).join(', ')}
+    />
+    <datalist id={`filter-options-${label.replace(/\s+/g, '-').toLowerCase()}`}>
+      {items.map((item) => <option key={item} value={`${prefix}${item}`} />)}
+    </datalist>
+    {selected.length > 0 ? (
+      <button className="workspace-filter__reset" onClick={() => onSelect([])} type="button">
+        Clear selection
       </button>
-      {items.map((item) => (
-        <button className={selected === item ? 'chip chip--active' : 'chip'} key={item} onClick={() => onSelect(item)} type="button">
-          {prefix}
-          {item}
-        </button>
-      ))}
-    </div>
+    ) : null}
   </div>
 );
 
@@ -891,6 +795,14 @@ const MetadataEditor = ({
         onChange={(event) => setEditorState((current) => ({ ...current, description: event.target.value }))}
       />
     </label>
+    <label>
+      <span>Source / Inspiration URL</span>
+      <input
+        type="url"
+        value={editorState.sourceUrl}
+        onChange={(event) => setEditorState((current) => ({ ...current, sourceUrl: event.target.value }))}
+      />
+    </label>
     <label className="metadata-editor__checkbox">
       <input
         checked={editorState.favorite}
@@ -929,6 +841,7 @@ const CreateTemplateDialog = ({
             title: templateName,
             category: category.trim() || 'Custom',
             description: description.trim(),
+            sourceUrl: editorState.sourceUrl,
             tags: tags
               .split(',')
               .map((tag) => tag.trim())
@@ -991,6 +904,7 @@ const CreateSnippetDialog = ({
   const [title, setTitle] = useState(initialPayload.title ?? '');
   const [category, setCategory] = useState(initialPayload.category ?? 'Examples');
   const [description, setDescription] = useState(initialPayload.description ?? '');
+  const [sourceUrl, setSourceUrl] = useState(initialPayload.sourceUrl ?? '');
   const [tags, setTags] = useState((initialPayload.tags ?? []).join(', '));
   const [html, setHtml] = useState(initialPayload.html ?? '');
   const [css, setCss] = useState(initialPayload.css ?? '');
@@ -1002,6 +916,7 @@ const CreateSnippetDialog = ({
     setTitle(payload.title ?? '');
     setCategory(payload.category ?? 'Examples');
     setDescription(payload.description ?? '');
+    setSourceUrl(payload.sourceUrl ?? '');
     setTags((payload.tags ?? []).join(', '));
     setHtml(payload.html ?? '');
     setCss(payload.css ?? '');
@@ -1018,6 +933,7 @@ const CreateSnippetDialog = ({
             title: title.trim() || 'Untitled snippet',
             category: category.trim() || 'Examples',
             description,
+            sourceUrl: sourceUrl.trim() || undefined,
             tags: tags
               .split(',')
               .map((tag) => tag.trim())

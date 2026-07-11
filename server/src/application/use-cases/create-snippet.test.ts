@@ -12,6 +12,7 @@ describe('CreateSnippetUseCase', () => {
     expect(snippet.id).toBeTruthy();
     expect(snippet.favorite).toBe(false);
     expect(snippet.archived).toBe(false);
+    expect(snippet.sourceUrl).toBe('');
     expect(snippet.tags).toEqual(['react']);
     await expect(repository.findById(snippet.id)).resolves.toEqual(snippet);
   });

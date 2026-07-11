@@ -1,7 +1,7 @@
 import type { Snippet } from '@codesnippets/shared';
 import { Input, Textarea } from '../../../shared/ui/Input';
 
-export type SnippetFormState = Pick<Snippet, 'title' | 'description' | 'category' | 'favorite'> & {
+export type SnippetFormState = Pick<Snippet, 'title' | 'description' | 'sourceUrl' | 'category' | 'favorite'> & {
   tags: string[];
 };
 
@@ -24,6 +24,12 @@ export const SnippetMetadataPanel = ({
       rows={4}
       value={value.description}
       onChange={(event) => onChange({ ...value, description: event.target.value })}
+    />
+    <Input
+      label="Source / Inspiration URL"
+      type="url"
+      value={value.sourceUrl}
+      onChange={(event) => onChange({ ...value, sourceUrl: event.target.value })}
     />
     <Input
       label="Category"

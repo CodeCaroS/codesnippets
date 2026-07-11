@@ -5,6 +5,7 @@ const statements = [
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT DEFAULT '',
+    source_url TEXT DEFAULT '',
     html TEXT DEFAULT '',
     css TEXT DEFAULT '',
     javascript TEXT DEFAULT '',
@@ -34,5 +35,10 @@ const statements = [
 export const runMigrations = (db: SQLiteDatabase): void => {
   for (const statement of statements) {
     db.prepare(statement).run();
+  }
+
+  const snippetColumns = db.prepare('PRAGMA table_info(snippets)').all() as Array<{ name: string }>;
+  if (!snippetColumns.some((column) => column.name === 'source_url')) {
+    db.prepare("ALTER TABLE snippets ADD COLUMN source_url TEXT DEFAULT ''").run();
   }
 };

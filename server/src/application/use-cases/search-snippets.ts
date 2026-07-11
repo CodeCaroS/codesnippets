@@ -5,6 +5,6 @@ export class SearchSnippetsUseCase {
   constructor(private readonly repository: SnippetRepository) {}
 
   async execute(query: SnippetSearchQuery): Promise<Snippet[]> {
-    return this.repository.search(query);
+    return this.repository.findAll(query);
   }
 }

@@ -1,4 +1,5 @@
-import { ReactNode, useState } from 'react';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Bot, Check, Code, Copy, Lock, Server, Terminal } from 'lucide-react';
 
 const endpoints = [

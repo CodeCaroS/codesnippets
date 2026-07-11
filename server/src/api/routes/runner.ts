@@ -4,9 +4,10 @@ import { BuildPreviewDocumentUseCase } from '../../application/use-cases/build-p
 import { validate } from '../middleware/validation.js';
 
 const schema = z.object({
-  html: z.string().optional(),
-  css: z.string().optional(),
-  javascript: z.string().optional(),
+  executionId: z.string().uuid(),
+  html: z.string().default(''),
+  css: z.string().default(''),
+  javascript: z.string().default(''),
 });
 
 export const createRunnerRouter = (useCase: BuildPreviewDocumentUseCase): Router => {

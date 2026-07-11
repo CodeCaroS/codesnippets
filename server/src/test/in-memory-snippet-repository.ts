@@ -32,14 +32,10 @@ export class InMemorySnippetRepository implements SnippetRepository {
     return this.items.delete(id);
   }
 
-  async search(query: SnippetSearchQuery): Promise<Snippet[]> {
-    return this.filter(query);
-  }
-
   private filter(query: SnippetSearchQuery): Snippet[] {
     return Array.from(this.items.values()).filter((snippet) => {
       const matchesText = query.text
-        ? [snippet.title, snippet.description, snippet.html, snippet.css, snippet.javascript]
+        ? [snippet.title, snippet.description, snippet.sourceUrl, snippet.html, snippet.css, snippet.javascript]
             .join(' ')
             .toLowerCase()
             .includes(query.text.toLowerCase())

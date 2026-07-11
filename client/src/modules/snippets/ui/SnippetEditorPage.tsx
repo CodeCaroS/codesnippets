@@ -26,6 +26,7 @@ type EditorState = SnippetFormState & Pick<Snippet, 'html' | 'css' | 'javascript
 const emptySnippet: EditorState = {
   title: 'Untitled snippet',
   description: '',
+  sourceUrl: '',
   html: '<div class="app">Hello CodeSnippets</div>',
   css: '.app { font-family: sans-serif; padding: 1rem; }',
   javascript: 'console.log("Ready")',
@@ -43,6 +44,7 @@ const editorTabs: Array<{ key: EditorTab; label: string }> = [
 const toEditorState = (snippet: Snippet): EditorState => ({
   title: snippet.title,
   description: snippet.description,
+  sourceUrl: snippet.sourceUrl ?? '',
   html: snippet.html,
   css: snippet.css,
   javascript: snippet.javascript,
@@ -81,6 +83,7 @@ export const SnippetEditorPage = () => {
       const payload: CreateSnippetRequest = {
         title: editorState.title,
         description: editorState.description,
+        sourceUrl: editorState.sourceUrl.trim() || undefined,
         html: editorState.html,
         css: editorState.css,
         javascript: editorState.javascript,
