@@ -10,7 +10,8 @@ import { FavoriteSnippetUseCase } from '../../application/use-cases/favorite-sni
 import { GetSnippetUseCase } from '../../application/use-cases/get-snippet.js';
 import { ListSnippetsUseCase } from '../../application/use-cases/list-snippets.js';
 import { validate } from '../middleware/validation.js';
-import { Snippet } from '../../domain/snippet.js';
+import { asyncHandler } from '../middleware/async-handler.js';
+import { toSnippetDto } from '../serializers/snippet.js';
 
 const paramsSchema = z.object({
   id: z.string().min(1),
@@ -41,12 +42,6 @@ const querySchema = z.object({
   direction: z.enum(['asc', 'desc']).optional(),
 });
 
-const toSnippetDto = (snippet: Snippet): SnippetDto => ({
-  ...snippet,
-  createdAt: snippet.createdAt.toISOString(),
-  updatedAt: snippet.updatedAt.toISOString(),
-});
-
 export const createSnippetsRouter = (dependencies: {
   createSnippet: CreateSnippetUseCase;
   updateSnippet: UpdateSnippetUseCase;
@@ -60,8 +55,7 @@ export const createSnippetsRouter = (dependencies: {
   const router = Router();
   const getParamId = (value: string | string[]): string => (Array.isArray(value) ? value[0] ?? '' : value);
 
-  router.get('/', validate(querySchema, 'query'), async (request, response, next) => {
-    try {
+  router.get('/', validate(querySchema, 'query'), asyncHandler(async (request, response) => {
       const query = request.query as z.infer<typeof querySchema>;
       const snippets = await dependencies.listSnippets.execute({
         archived: query.archived,
@@ -80,79 +74,48 @@ export const createSnippetsRouter = (dependencies: {
       };
 
       response.json(payload);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
-  router.get('/:id', validate(paramsSchema, 'params'), async (request, response, next) => {
-    try {
+  router.get('/:id', validate(paramsSchema, 'params'), asyncHandler(async (request, response) => {
       const snippet = await dependencies.getSnippet.execute(getParamId(request.params.id));
       const payload: SnippetResponse = { data: toSnippetDto(snippet) };
       response.json(payload);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
-  router.post('/', validate(createSnippetSchema), async (request, response, next) => {
-    try {
+  router.post('/', validate(createSnippetSchema), asyncHandler(async (request, response) => {
       const snippet = await dependencies.createSnippet.execute(request.body as z.infer<typeof createSnippetSchema>);
       const payload: SnippetResponse = { data: toSnippetDto(snippet) };
       response.status(201).json(payload);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
-  router.patch('/:id', validate(paramsSchema, 'params'), validate(updateSnippetSchema), async (request, response, next) => {
-    try {
+  router.patch('/:id', validate(paramsSchema, 'params'), validate(updateSnippetSchema), asyncHandler(async (request, response) => {
       const snippet = await dependencies.updateSnippet.execute(
         getParamId(request.params.id),
         request.body as z.infer<typeof updateSnippetSchema>,
       );
       const payload: SnippetResponse = { data: toSnippetDto(snippet) };
       response.json(payload);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
-  router.delete('/:id', validate(paramsSchema, 'params'), async (request, response, next) => {
-    try {
+  router.delete('/:id', validate(paramsSchema, 'params'), asyncHandler(async (request, response) => {
       await dependencies.deleteSnippet.execute(getParamId(request.params.id));
       response.status(204).send();
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
-  router.post('/:id/duplicate', validate(paramsSchema, 'params'), async (request, response, next) => {
-    try {
+  router.post('/:id/duplicate', validate(paramsSchema, 'params'), asyncHandler(async (request, response) => {
       const snippet = await dependencies.duplicateSnippet.execute(getParamId(request.params.id));
       response.status(201).json({ data: toSnippetDto(snippet) } satisfies SnippetResponse);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
-  router.post('/:id/archive', validate(paramsSchema, 'params'), async (request, response, next) => {
-    try {
+  router.post('/:id/archive', validate(paramsSchema, 'params'), asyncHandler(async (request, response) => {
       const snippet = await dependencies.archiveSnippet.execute(getParamId(request.params.id));
       response.json({ data: toSnippetDto(snippet) } satisfies SnippetResponse);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
-  router.post('/:id/favorite', validate(paramsSchema, 'params'), async (request, response, next) => {
-    try {
+  router.post('/:id/favorite', validate(paramsSchema, 'params'), asyncHandler(async (request, response) => {
       const snippet = await dependencies.favoriteSnippet.execute(getParamId(request.params.id));
       response.json({ data: toSnippetDto(snippet) } satisfies SnippetResponse);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
   return router;
 };
