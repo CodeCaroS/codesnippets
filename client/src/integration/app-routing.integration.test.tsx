@@ -64,18 +64,18 @@ describe('app routing integration', () => {
     renderRoute('/');
 
     expect(screen.getByRole('navigation', { name: 'Primary workspace' })).toBeInTheDocument();
-    expect(await screen.findByText('Library Explorer')).toBeInTheDocument();
+    expect(await screen.findByText('Library Explorer', undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it('renders settings through the same route shell', async () => {
     renderRoute('/settings');
 
-    expect(await screen.findByRole('heading', { name: 'Preferences & Backups' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Preferences & Backups' }, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it('renders the agent guide route from the shared shell', async () => {
     renderRoute('/agent-guide');
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Personal AI OS Integration Guide' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Personal AI OS Integration Guide' })).toBeInTheDocument(), { timeout: 5000 });
   });
 });

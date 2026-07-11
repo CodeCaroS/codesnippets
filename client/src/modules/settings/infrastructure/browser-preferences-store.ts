@@ -1,4 +1,5 @@
 import { defaultWorkspacePreferences, type WorkspacePreferences } from '../domain/workspace-preferences';
+import { loadFromStorage, saveToStorage } from '../../../shared/infrastructure/browser-storage';
 
 export const workspacePreferencesStorageKey = 'codesnippets:workspace-settings';
 
@@ -25,18 +26,9 @@ const parseWorkspacePreferences = (value: unknown): WorkspacePreferences => {
 };
 
 export const loadWorkspacePreferences = (): WorkspacePreferences => {
-  try {
-    const storedValue = window.localStorage.getItem(workspacePreferencesStorageKey);
-    return storedValue ? parseWorkspacePreferences(JSON.parse(storedValue)) : defaultWorkspacePreferences;
-  } catch {
-    return defaultWorkspacePreferences;
-  }
+  return loadFromStorage(workspacePreferencesStorageKey, parseWorkspacePreferences, defaultWorkspacePreferences);
 };
 
 export const saveWorkspacePreferences = (preferences: WorkspacePreferences): void => {
-  try {
-    window.localStorage.setItem(workspacePreferencesStorageKey, JSON.stringify(preferences));
-  } catch {
-    // Browser privacy settings can deny local storage. Preferences remain session-only.
-  }
+  saveToStorage(workspacePreferencesStorageKey, preferences);
 };

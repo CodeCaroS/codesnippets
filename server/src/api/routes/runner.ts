@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { BuildPreviewDocumentUseCase } from '../../application/use-cases/build-preview-document.js';
 import { validate } from '../middleware/validation.js';
+import { asyncHandler } from '../middleware/async-handler.js';
 
 const schema = z.object({
   executionId: z.string().uuid(),
@@ -13,13 +14,9 @@ const schema = z.object({
 export const createRunnerRouter = (useCase: BuildPreviewDocumentUseCase): Router => {
   const router = Router();
 
-  router.post('/', validate(schema), (request, response, next) => {
-    try {
-      response.json(useCase.execute(request.body));
-    } catch (error) {
-      next(error);
-    }
-  });
+  router.post('/', validate(schema), asyncHandler(async (request, response) => {
+    response.json(await useCase.execute(request.body));
+  }));
 
   return router;
 };

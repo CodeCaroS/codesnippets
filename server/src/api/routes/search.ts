@@ -3,6 +3,8 @@ import { z } from 'zod';
 import type { SearchSnippetsRequest, SearchSnippetsResponse } from '@codesnippets/shared';
 import { SearchSnippetsUseCase } from '../../application/use-cases/search-snippets.js';
 import { validate } from '../middleware/validation.js';
+import { asyncHandler } from '../middleware/async-handler.js';
+import { toSnippetDto } from '../serializers/snippet.js';
 
 const schema = z.object({
   text: z.string().optional(),
@@ -17,21 +19,13 @@ const schema = z.object({
 export const createSearchRouter = (useCase: SearchSnippetsUseCase): Router => {
   const router = Router();
 
-  router.post('/', validate(schema), async (request, response, next) => {
-    try {
+  router.post('/', validate(schema), asyncHandler(async (request, response) => {
       const snippets = await useCase.execute(request.body as SearchSnippetsRequest);
       response.json({
-        data: snippets.map((snippet) => ({
-          ...snippet,
-          createdAt: snippet.createdAt.toISOString(),
-          updatedAt: snippet.updatedAt.toISOString(),
-        })),
+        data: snippets.map(toSnippetDto),
         total: snippets.length,
       } satisfies SearchSnippetsResponse);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
   return router;
 };

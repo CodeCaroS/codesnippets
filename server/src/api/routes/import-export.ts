@@ -4,6 +4,7 @@ import type { ImportExportData } from '@codesnippets/shared';
 import { ExportSnippetsUseCase } from '../../application/use-cases/export-snippets.js';
 import { ImportSnippetsUseCase } from '../../application/use-cases/import-snippets.js';
 import { validate } from '../middleware/validation.js';
+import { asyncHandler } from '../middleware/async-handler.js';
 
 const snippetSchema = z.object({
   id: z.string().min(1),
@@ -33,23 +34,15 @@ export const createImportExportRouter = (
 ): Router => {
   const router = Router();
 
-  router.post('/import', validate(schema), async (request, response, next) => {
-    try {
+  router.post('/import', validate(schema), asyncHandler(async (request, response) => {
       const result = await importUseCase.execute(request.body as ImportExportData);
       response.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
-  router.get('/export', async (_request, response, next) => {
-    try {
+  router.get('/export', asyncHandler(async (_request, response) => {
       const payload = await exportUseCase.execute();
       response.json(payload);
-    } catch (error) {
-      next(error);
-    }
-  });
+  }));
 
   return router;
 };

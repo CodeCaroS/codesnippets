@@ -1,4 +1,5 @@
 import type { SnippetTemplate } from '../domain/workspace-editor';
+import { loadFromStorage, saveToStorage } from '../../../shared/infrastructure/browser-storage';
 
 const customTemplatesKey = 'codesnippets:custom-templates';
 
@@ -35,28 +36,14 @@ const toSnippetTemplate = (value: unknown): SnippetTemplate | null => {
 };
 
 export const loadCustomTemplates = (): SnippetTemplate[] => {
-  try {
-    const storedValue = window.localStorage.getItem(customTemplatesKey);
-    if (!storedValue) {
-      return [];
-    }
-
-    const parsedValue: unknown = JSON.parse(storedValue);
-    return Array.isArray(parsedValue)
-      ? parsedValue.flatMap((value) => {
+  return loadFromStorage(customTemplatesKey, (value: unknown) => Array.isArray(value)
+      ? value.flatMap((value) => {
           const template = toSnippetTemplate(value);
           return template ? [template] : [];
         })
-      : [];
-  } catch {
-    return [];
-  }
+      : [], []);
 };
 
 export const saveCustomTemplates = (templates: SnippetTemplate[]): void => {
-  try {
-    window.localStorage.setItem(customTemplatesKey, JSON.stringify(templates));
-  } catch {
-    // Browser privacy settings can deny local storage. Templates remain session-only.
-  }
+  saveToStorage(customTemplatesKey, templates);
 };
